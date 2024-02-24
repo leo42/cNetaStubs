@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "jsx": "react",
+      "module": "esnext",
+      "esModuleInterop": true,
+      "target": "ES2020",
+      "moduleResolution": "node",
+      "sourceMap": true,
+      "rootDir": "./src",
+      "outDir": "./dist",
+      "resolveJsonModule": true
+    },
+    "lib": ["es2015"]
+  }
