@@ -11,3 +11,25 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+
+.config {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* set content spacing of sub-components */
+  
+  margin: 0 0 0 0;
+  padding: 0 0 0 0;
+
+}
+
+.config input{
+  margin: 3px;
+  padding: 4px;
+}
+
+.config input[type="text"] {
+  width: 700px;
+}
