@@ -33,3 +33,25 @@ code {
 .config input[type="text"] {
   width: 700px;
 }
+
+.redeemRequest{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* set content spacing of sub-components */
+  
+  margin: 0 0 0 0;
+  padding: 0 0 0 0;
+}
+
+.mintRequest{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* set content spacing of sub-components */
+  
+  margin: 20px;
+  padding: 0 0 0 0;
+}

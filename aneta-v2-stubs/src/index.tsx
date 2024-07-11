@@ -5,6 +5,11 @@ import './App.css';
 import { Lucid, Blockfrost, Data, Constr } from 'lucid-cardano';
 import { useState } from 'react';
 
+
+const RedemptionRequestSchema = Data.Object({
+  destinationAddress: Data.Bytes()
+});
+
 const MintRequesrSchema = Data.Object({
   amount: Data.Integer(),
   path: Data.Integer(),
@@ -17,6 +22,8 @@ const MultisigDescriptorSchema = Data.Object({
   m: Data.Integer(),
 });
 
+type RedemptionRequest = Data.Static<typeof RedemptionRequestSchema>;
+const RedemptionRequest = RedemptionRequestSchema as unknown as RedemptionRequest;
 
 
 type MintRequest = Data.Static<typeof MintRequesrSchema>;
@@ -26,21 +33,66 @@ type MultisigDescriptor = Data.Static<typeof MultisigDescriptorSchema>;
 const MultisigDescriptor = MultisigDescriptorSchema as unknown as MultisigDescriptor;
 
 function App() {
-  const [address, setAddress] = useState('addr_test1qqjg030vffsy7jav0802dr5unfv06dn5avtqh7028ykrd2l3meyrd8efkt952egccka06epqkye4j9fnrarjjjhrxz2sufjewr');
+  const [address, setAddress] = useState('addr_test1wz2ajd694hd2qsjf0wmmmznruxsl885y3mlc2lkqaxqu02ggz7mzm');
   const [amount, setAmount] = useState(0.0001);
-
+  const [redemptionAmount, setRedemptionAmount] = useState(0.0001);
+  const [destinationAddress, setDestinationAddress] = useState('tb1qdgf2y590vg6pya78sdfkjx047prjafgp90ek23');
+  const [path, setPath] = useState(1)
   const [keyHash, setKeyHash] = useState(["00fb9ebd6baf0680bdf8da11f87eaca9715d1f9ffa9c83241c643e53"])
   const [m, setM] = useState(1)
 
-  async function sendMintRequest() {  
+  async function sendMintRequest() {
     const lucid = await  Lucid.new( await new Blockfrost("https://passthrough.broclan.io", "preview"), "Preview" )
     console.log(await lucid.provider.getProtocolParameters())
     const nami = await window.cardano.nami.enable()
     lucid.selectWallet(nami)
     const tx =  lucid.newTx()
-    const data = Data.to({ amount: BigInt(amount * 10_000_000), path: 1n }, MintRequest);
+    const data = Data.to({ amount: BigInt(amount * 100_000_000), path: BigInt(path) }, MintRequest);
 
-    tx.payToContract(address, {inline : data} , {"lovelace":  2_000_000n} )
+    tx.payToContract(address, {inline : data} , {"lovelace":  50_000_000n} )
+    const unsignedTx =await tx.complete()
+    console.log(unsignedTx.toString())
+    const signature = await nami.signTx(unsignedTx.toString(), true)
+    unsignedTx.assemble([signature])
+    const completedTx = await unsignedTx.complete()
+    const txHash = await completedTx.submit()
+    console.log(txHash)
+  }
+
+  function stringToHex(str) {
+    let hex = '';
+    for(let i = 0; i < str.length; i++) {
+        let hexChar = str.charCodeAt(i).toString(16);
+        hex += hexChar.padStart(2, '0');
+    }
+    return hex;
+}
+
+async function sendBrokenRequest() {
+  const lucid = await  Lucid.new( await new Blockfrost("https://passthrough.broclan.io", "preview"), "Preview" )
+  const nami = await window.cardano.nami.enable()
+  lucid.selectWallet(nami)
+  const tx =  lucid.newTx()
+  const data = Data.to( {  destinationAddress : stringToHex(destinationAddress) } , RedemptionRequest);
+  tx.payToContract(address, {inline : data} , {"lovelace":  20_000_000n} )
+  const unsignedTx =await tx.complete()
+  console.log(unsignedTx.toString())
+  const signature = await nami.signTx(unsignedTx.toString(), true)
+  unsignedTx.assemble([signature])
+  const completedTx = await unsignedTx.complete()
+  const txHash = await completedTx.submit()
+  console.log(txHash)
+}
+
+
+  async function sendRedeemRequest() {
+    const lucid = await  Lucid.new( await new Blockfrost("https://passthrough.broclan.io", "preview"), "Preview" )
+    const nami = await window.cardano.nami.enable()
+    lucid.selectWallet(nami)
+    const tx =  lucid.newTx()
+    const data = Data.to( {  destinationAddress : stringToHex(destinationAddress) } , RedemptionRequest);
+
+    tx.payToContract(address, {inline : data} , {"lovelace":  2_000_000n , "95d93745addaa042497bb7bd8a63e1a1f39e848eff857ec0e981c7a963425443": BigInt(Math.floor(redemptionAmount * 100_000_000))} )
     const unsignedTx =await tx.complete()
     console.log(unsignedTx.toString())
     const signature = await nami.signTx(unsignedTx.toString(), true)
@@ -68,14 +120,50 @@ function App() {
 
   }
 
+  const config = {
+    "fixedFee": 0,
+    "margin": 0.005,
+    "redemptionMargin": 0.9,   
+    "utxoCharge": 0,
+    "maxConsolidationTime" : 3,
+    "consolidationThreshold" : 0.5,
+    "minMint": 10000,
+    "minRedemption": 10000,
+    "btcNetworkFeeMultiplyer": 1.1,
+    "btcNetworkFeeAsyncMultiplyer": 1.3,
+    "maxBtcFeeRate" :  0.004,
+    "mintDeposit": 50,
+    "mintTimeoutMinutes": 120,   
+    "adminAddress":  "addr_test1qrlmv3gjf253v49u8v5psxzwtlf6uljc5xf3a24ehfzcyz32ptyyevm796lgrkz2t5vrx3snmmsfh0ntc333mqf6eagstyc95m"
+}
+
+
+
   return (
     <div className="App">
       <header className="App-header">
-      <div className="mintRequest">
-        send mint request
+        <div className="wallet">
       <input type="text" placeholder='address' value={address} onChange={(event) => setAddress(event.target.value)}   ></input>
+      </div>
+      <div className="mintRequest ">
+        send mint request
       <input type="number" placeholder='amount' value={amount} onChange={(event) => setAmount(Number(event.target.value))}  ></input>
+      <input type="number" placeholder='path' value={path} onChange={(event) => setPath(Number(event.target.value))}  ></input>
+      <div > Amount to pay :     {Number(amount) + config.fixedFee + config.margin *  Number(amount) } ; 
+</div>
       <button onClick={sendMintRequest}>send mint request</button>
+      </div>
+      <div className="redeemRequest">
+        send redeem request
+      <input type="number" placeholder='amount' value={redemptionAmount} onChange={(event) => setRedemptionAmount(Number(event.target.value))}  ></input>
+      <input type="text" placeholder='destinationAddress' value={destinationAddress} onChange={(event) => setDestinationAddress(event.target.value)}  ></input>
+      <button onClick={sendRedeemRequest}>send redeem request</button>
+      </div>
+      <div className="redeemRequest">
+        send broken request
+      <input type="number" placeholder='amount' value={redemptionAmount} onChange={(event) => setRedemptionAmount(Number(event.target.value))}  ></input>
+      <input type="text" placeholder='destinationAddress' value={destinationAddress} onChange={(event) => setDestinationAddress(event.target.value)}  ></input>
+      <button onClick={sendBrokenRequest}>send broken request</button>
       </div>
       <br/>
       <div className="config">
