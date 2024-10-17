@@ -10,6 +10,11 @@ const RedemptionRequestSchema = Data.Object({
   destinationAddress: Data.Bytes()
 });
 
+const adminTokens = { "Private1" : "a653490ca18233f06e7f69f4048f31ade4e3885750beae0170d7c8ae634e65746142726964676541646d696e",
+                      "Private2" : "592fb0f9d8ed15c06858118d134d5c4b7c77320507810fee9ac2ddf954686548756e74696e674f6654686557696c64",
+                      "toProduction" : "79dfc51ebff0b40e596e6ce59a0e3306038c7214afd40f9bf1f15cd101a11f28a72b39d9e37cdd96b86983adc5acb72ea6c8edfe04f5a9d5d57895ba"
+}
+
 const MintRequesrSchema = Data.Object({
   amount: Data.Integer(),
   path: Data.Integer(),
@@ -33,14 +38,16 @@ type MultisigDescriptor = Data.Static<typeof MultisigDescriptorSchema>;
 const MultisigDescriptor = MultisigDescriptorSchema as unknown as MultisigDescriptor;
 
 function App() {
-  const [address, setAddress] = useState('addr_test1wz2ajd694hd2qsjf0wmmmznruxsl885y3mlc2lkqaxqu02ggz7mzm');
-  const [amount, setAmount] = useState(0.0001);
+ // const [address, setAddress] = useState('addr_test1wz2ajd694hd2qsjf0wmmmznruxsl885y3mlc2lkqaxqu02ggz7mzm'); // testnet1
+ const [address, setAddress] = useState('addr_test1wqq7gshkf4c27gm0rjf7dck6map5dh35llp5pkpnk3f9czg8cemve');  //to production
+ const [amount, setAmount] = useState(0.0001);
   const [redemptionAmount, setRedemptionAmount] = useState(0.0001);
   const [destinationAddress, setDestinationAddress] = useState('tb1qdgf2y590vg6pya78sdfkjx047prjafgp90ek23');
   const [path, setPath] = useState(1)
   const [keyHash, setKeyHash] = useState(["00fb9ebd6baf0680bdf8da11f87eaca9715d1f9ffa9c83241c643e53"])
   const [m, setM] = useState(1)
-
+  const [adminToken , setAdminToken] = useState("Private1")
+  
   async function sendMintRequest() {
     const lucid = await  Lucid.new( await new Blockfrost("https://passthrough.broclan.io", "preview"), "Preview" )
     console.log(await lucid.provider.getProtocolParameters())
@@ -92,7 +99,7 @@ async function sendBrokenRequest() {
     const tx =  lucid.newTx()
     const data = Data.to( {  destinationAddress : stringToHex(destinationAddress) } , RedemptionRequest);
 
-    tx.payToContract(address, {inline : data} , {"lovelace":  2_000_000n , "95d93745addaa042497bb7bd8a63e1a1f39e848eff857ec0e981c7a963425443": BigInt(Math.floor(redemptionAmount * 100_000_000))} )
+    tx.payToContract(address, {inline : data} , {"lovelace":  2_000_000n , "01e442f64d70af236f1c93e6e2dadf4346de34ffc340d833b4525c0963425443": BigInt(Math.floor(redemptionAmount * 100_000_000))} )
     const unsignedTx =await tx.complete()
     console.log(unsignedTx.toString())
     const signature = await nami.signTx(unsignedTx.toString(), true)
@@ -108,8 +115,12 @@ async function sendBrokenRequest() {
     lucid.selectWallet(nami)
     const data = Data.to({ list: keyHash , m: BigInt(m) }, MultisigDescriptor);
     const tx =  lucid.newTx()
+    const adminTokenId = adminTokens[adminToken]
+    const assets = {"lovelace":  2_000_000n}
+    assets[adminTokenId] = 1n
+    console.log(assets)
     tx.payToAddressWithData(await lucid.wallet.address(),  
-                                {inline : data} , {"lovelace":  2_000_000n, "a653490ca18233f06e7f69f4048f31ade4e3885750beae0170d7c8ae634e65746142726964676541646d696e": 1n} )
+                                    {inline : data} ,assets  )
     const unsignedTx =await tx.complete()
     console.log(unsignedTx.toString())
     const signature = await nami.signTx(unsignedTx.toString(), true)
@@ -176,6 +187,11 @@ async function sendBrokenRequest() {
         })}
         <button onClick={() => setKeyHash([...keyHash, ""])}>add key hash</button>
         <input type="number" placeholder='m' value={m} onChange={(event) => setM(Number(event.target.value))}  ></input>
+      <select onChange={(event) => setAdminToken(event.target.value)} value={adminToken}>
+        {Object.keys(adminTokens).map((key) => {
+          return <option value={key}>{key}</option>
+        })}
+      </select>
         <button onClick={() => setConfig()}>set config</button>
       </div>
 
